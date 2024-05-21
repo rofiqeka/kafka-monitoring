@@ -2,9 +2,11 @@ package com.ekahospital;
 
 import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import org.apache.kafka.clients.admin.*;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
+import org.eclipse.microprofile.config.ConfigProvider;
 
 import java.util.*;
 import java.util.concurrent.ExecutionException;
@@ -12,11 +14,15 @@ import java.util.concurrent.ExecutionException;
 @ApplicationScoped
 public class KafkaMonitorService {
 
+    @Inject
+    TelegramBotService telegramBotService;
+
     private final AdminClient adminClient;
 
     public KafkaMonitorService() {
+        String brokers = ConfigProvider.getConfig().getValue("quarkus.kafka.bootstrap-servers", String.class);
         Properties properties = new Properties();
-        properties.put("bootstrap.servers", "localhost:9092");
+        properties.put("bootstrap.servers", brokers);
         this.adminClient = AdminClient.create(properties);
     }
 
@@ -66,5 +72,7 @@ public class KafkaMonitorService {
     private void sendAlert(String groupId, TopicPartition partition, long lag) {
         // Implement your Telegram alert logic here
         System.out.println("ALERT " + partition.topic() + " " + lag);
+        String message = String.format("Alert: Consumer group %s is %d messages behind on partition %s", groupId, lag, partition);
+        telegramBotService.sendAlert(message);
     }
 }
