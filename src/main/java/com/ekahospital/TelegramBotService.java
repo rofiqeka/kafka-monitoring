@@ -1,5 +1,6 @@
 package com.ekahospital;
 
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -10,12 +11,18 @@ import jakarta.enterprise.context.ApplicationScoped;
 @ApplicationScoped
 public class TelegramBotService extends TelegramLongPollingBot {
 
-    private final String botToken = "YOUR_BOT_TOKEN";
-    private final String chatId = "YOUR_CHAT_ID";
+    @ConfigProperty(name = "alert.telegram.bottoken", defaultValue="")
+    String botToken;
+
+    @ConfigProperty(name = "alert.telegram.chatid", defaultValue="")
+    String chatId;
+
+    @ConfigProperty(name = "alert.telegram.username", defaultValue="EkaBot")
+    String username;
 
     @Override
     public String getBotUsername() {
-        return "YOUR_BOT_USERNAME";
+        return username;
     }
 
     @Override
