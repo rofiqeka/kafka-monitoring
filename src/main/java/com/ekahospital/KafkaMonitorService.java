@@ -7,6 +7,7 @@ import org.apache.kafka.clients.admin.*;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.eclipse.microprofile.config.ConfigProvider;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.util.*;
 import java.util.concurrent.ExecutionException;
@@ -17,6 +18,10 @@ public class KafkaMonitorService {
     @Inject
     TelegramBotService telegramBotService;
 
+    @ConfigProperty(name = "alert.kafka.lag1", defaultValue="10")
+    Integer lagFirst;
+
+
     private final AdminClient adminClient;
 
     public KafkaMonitorService() {
@@ -24,6 +29,7 @@ public class KafkaMonitorService {
         Properties properties = new Properties();
         properties.put("bootstrap.servers", brokers);
         this.adminClient = AdminClient.create(properties);
+        Log.infof("Group: {}", brokers);
     }
 
     private Map<TopicPartition, Long> getConsumerGrpOffsets(String groupId)
@@ -45,22 +51,27 @@ public class KafkaMonitorService {
         try {
             for (ConsumerGroupListing groupListing : adminClient.listConsumerGroups().all().get()) {
                 String groupId = groupListing.groupId();
-                Log.info("Group: "+ groupId);
                 ConsumerGroupDescription groupDescription = adminClient.describeConsumerGroups(Collections.singletonList(groupId)).all().get().get(groupId);
 
-                //Optional<TopicPartition> tp = groupDescription.members().stream().map(s -> s.assignment().topicPartitions());
                 for (MemberDescription member : groupDescription.members()){
                     for (TopicPartition partition : member.assignment().topicPartitions()){
+
                         OffsetAndMetadata committed = adminClient.listConsumerGroupOffsets(groupId).partitionsToOffsetAndMetadata().get().get(partition);
-                        long endOffset = adminClient.listOffsets(Collections.singletonMap(partition, OffsetSpec.latest())).all().get().get(partition).offset();
-                        long lag = endOffset - committed.offset();
+                        if (committed != null) {
+                            long endOffset = adminClient.listOffsets(Collections.singletonMap(partition, OffsetSpec.latest())).all().get().get(partition).offset();
+                            long lag = endOffset - committed.offset();
 
-                        Log.info("Topic " + lag);
+                            Log.debugf("Group: %s Partition: %s, EndOffset: %d, CommittedOffset: %d, Lag: %d",
+                                    groupId, partition.partition(), endOffset, committed.offset(), lag);
 
-                        if (lag > 100) {
-                            sendAlert(groupId, partition, lag);
+                            if (lag > lagFirst) {
+                                sendAlert(groupId, partition, lag);
+                            }
                         }
-
+                        else {
+                            Log.debugf("Group: %s Partition: %s, committed is null",
+                                    groupId, partition.partition());
+                        }
                     }
                 }
             }
