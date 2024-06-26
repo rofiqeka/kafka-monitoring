@@ -10,7 +10,7 @@ public class MonitorScheduler {
     @Inject
     KafkaMonitorService kafkaMonitorService;
 
-    @Scheduled(every = "60s") // Adjust the interval as needed
+    @Scheduled(every = "{alert.cron.expr}") // Adjust the interval as needed
     void monitorKafkaConsumers() {
         kafkaMonitorService.checkConsumerLag();
     }
