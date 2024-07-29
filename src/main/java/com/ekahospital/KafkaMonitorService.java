@@ -51,6 +51,10 @@ public class KafkaMonitorService {
         try {
             for (ConsumerGroupListing groupListing : adminClient.listConsumerGroups().all().get()) {
                 String groupId = groupListing.groupId();
+
+                if (!groupId.startsWith("prod"))
+                    continue;
+
                 ConsumerGroupDescription groupDescription = adminClient.describeConsumerGroups(Collections.singletonList(groupId)).all().get().get(groupId);
 
                 for (MemberDescription member : groupDescription.members()){
