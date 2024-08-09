@@ -24,6 +24,8 @@ public class KafkaMonitorService {
 
     private final AdminClient adminClient;
 
+    String[] criticalTopics = {"prod_appointment_checkin_update"};
+
     public KafkaMonitorService() {
         String brokers = ConfigProvider.getConfig().getValue("quarkus.kafka.bootstrap-servers", String.class);
         Properties properties = new Properties();
@@ -68,6 +70,10 @@ public class KafkaMonitorService {
                             Log.debugf("Group: %s Partition: %s, EndOffset: %d, CommittedOffset: %d, Lag: %d",
                                     groupId, partition.partition(), endOffset, committed.offset(), lag);
 
+                            // critical topics need to be zero lag
+                            if (Arrays.asList(criticalTopics).contains(groupId) && lag > 1){
+                                sendAlert(groupId, partition, lag);
+                            }
                             if (lag > lagFirst) {
                                 sendAlert(groupId, partition, lag);
                             }
